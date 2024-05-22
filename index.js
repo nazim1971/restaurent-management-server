@@ -1,5 +1,5 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 const app = express()
 require('dotenv').config()
@@ -27,8 +27,25 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    const userCollection = client.db('bistroDB').collection('users');
     const menuCollection = client.db('bistroDB').collection('menu');
     const reviewsCollection = client.db('bistroDB').collection('reviews');
+    const cartCollection = client.db('bistroDB').collection('carts')
+
+    // users related api
+    app.post('/users', async(req,res)=>{
+      const user = req.body;
+      // insert email if user doesn't exists
+
+      const query = {email: user.email}
+      const exixtingUser = await userCollection.findOne(query);
+      if(exixtingUser){
+        return res.send({message: 'user already exists', insertedId: null})
+      }
+      
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    })
 
     app.get('/menu',async(req,res)=>{
         const result = await menuCollection.find().toArray()
@@ -40,6 +57,27 @@ async function run() {
         res.send(result)
     })
 
+    // get carts data
+    app.get('/carts', async(req,res)=>{
+      const email = req.query.email;
+      const query = {email : email}
+      const result = await cartCollection.find(query).toArray();
+      res.send(result)
+    })
+    // carts collection 
+    app.post('/carts',async(req,res)=>{
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result)
+    })
+
+    // delete carts data
+    app.delete('/carts/:id', async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await cartCollection.deleteOne(query);
+      res.send(result)
+    })
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
    
